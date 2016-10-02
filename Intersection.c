@@ -34,7 +34,25 @@ static inline void normalize(double* v) {
   v[1] /= len;
   v[2] /= len;
 }
+double sphere_intersection(double* Ro, double* Rd,
+			     double* C, double r) {
+  double a = (sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]));
+  double b = (2 * (Rd[0] * (Ro[0] - C[0]) + Rd[1] * (Ro[1] - C[1]) + Rd[2] * (Ro[2] - C[2])));
+  double c = sqr(Ro[0]- C[0]) + sqr(Ro[1]- C[1]) +sqr(Ro[2]- C[2]) - sqr(r);
 
+  double det = sqr(b) - 4 * a * c;
+  if (det < 0) return -1;
+
+  det = sqrt(det);
+  
+  double t0 = (-b - det) / (2*a);
+  if (t0 > 0) return t0;
+
+  double t1 = (-b + det) / (2*a);
+  if (t1 > 0) return t1;
+
+  return -1;
+}
 
 double cylinder_intersection(double* Ro, double* Rd,
 			     double* C, double r) {
@@ -136,7 +154,7 @@ int main() {
 
 	switch(objects[i]->kind) {
 	case 0:
-	  t = cylinder_intersection(Ro, Rd,
+	  t = sphere_intersection(Ro, Rd,
 				    objects[i]->cylinder.center,
 				    objects[i]->cylinder.radius);
 	  break;
