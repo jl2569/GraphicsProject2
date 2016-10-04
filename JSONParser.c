@@ -7,7 +7,8 @@
 // Plymorphism in C
 
 typedef struct {
-  int kind; // 0 = cylinder, 1 = sphere, 2 = plane
+  int kind; // 0 = plane, 1 = sphere
+  char* name;
   double color[3];
   union {
     struct {
@@ -55,6 +56,7 @@ double plane_intersection(double* Ro, double* Rd,
   double t = d/a;
 
   if (t < 0.0) {
+	
     return -1;
   }
 
@@ -80,26 +82,6 @@ double sphere_intersection(double* Ro, double* Rd,
   return -1;
 }
 
-double cylinder_intersection(double* Ro, double* Rd,
-			     double* C, double r) {
-
-  double a = (sqr(Rd[0]) + sqr(Rd[2]));
-  double b = (2 * (Ro[0] * Rd[0] - Rd[0] * C[0] + Ro[2] * Rd[2] - Rd[2] * C[2]));
-  double c = sqr(Ro[0]) - 2*Ro[0]*C[0] + sqr(C[0]) + sqr(Ro[2]) - 2*Ro[2]*C[2] + sqr(C[2]) - sqr(r);
-
-  double det = sqr(b) - 4 * a * c;
-  if (det < 0) return -1;
-
-  det = sqrt(det);
-  
-  double t0 = (-b - det) / (2*a);
-  if (t0 > 0) return t0;
-
-  double t1 = (-b + det) / (2*a);
-  if (t1 > 0) return t1;
-
-  return -1;
-}
 
 int line = 1;
 
@@ -198,50 +180,50 @@ double* next_vector(FILE* json) {
   return v;
 }
 
-Object** valuesetter(int type,char* key ,double value,Object** objects ){
+Object** valuesetter(int type,char* key ,double value,Object** objects,int elements ){
 	if (type == 0){
 		if((strcmp(key,"width")==0)){
-			objects[0]->camera.width = value;
+			objects[elements]->camera.width = value;
 			return objects;
 		}else{
-			objects[0]->camera.height = value;
+			objects[elements]->camera.height = value;
 			return objects;
 		}
 		
 	}else {
 		if ((strcmp(key, "radius") == 0)){
-			objects[1]->sphere.radius = value;
+			objects[elements]->sphere.radius = value;
 			return objects;
 		}
 	}
 }
-Object** vectorsetter(int type,char* key ,double* value,Object** objects ){
+Object** vectorsetter(int type,char* key ,double* value,Object** objects,int elements ){
 	if (type == 1){
 		if ((strcmp(key, "color") == 0)){
 			for (int i=0;i<=2;i++){
-			   // objects[1]->sphere.color[i] = value[i];
+			   objects[elements]->color[i] = value[i];
 			}
 			return objects;
 		}else if ((strcmp(key, "position") == 0)){
 			for (int i=0;i<=2;i++){
-			    objects[1]->sphere.center[i] = value[i];
+			    objects[elements]->sphere.center[i] = value[i];
 			}
 			return objects;
 		} 
 	}else {
 		if ((strcmp(key, "color") == 0)){			
 		for (int i=0;i<=2;i++){
-			    //objects[2]->plane.color[i] = value[i];
+			    objects[elements]->color[i] = value[i];
 			}
 			return objects;
 		}else if ((strcmp(key, "position") == 0)){
 			for (int i=0;i<=2;i++){
-			    objects[2]->plane.center[i] = value[i];
+			    objects[elements]->plane.center[i] = value[i];
 			}
 			return objects;
 		}else{
 			for (int i=0;i<=2;i++){
-			    objects[2]->plane.normal[i] = value[i];
+			    objects[elements]->plane.normal[i] = value[i];
 			}
 			return objects;
 		}
@@ -251,6 +233,7 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects ){
 
 Object** read_scene(char* filename , Object** objects) {
   int c;
+  int elements = 0;
   FILE* json = fopen(filename, "r"); 
   
   if (json == NULL) {
@@ -266,7 +249,7 @@ Object** read_scene(char* filename , Object** objects) {
   skip_ws(json);
 
   // Find the objects
-
+   
   while (1) {
 	int type = 0;
     c = fgetc(json);
@@ -294,10 +277,19 @@ Object** read_scene(char* filename , Object** objects) {
       char* value = next_string(json);
 
       if (strcmp(value, "camera") == 0) {
+		  objects[elements] = malloc(sizeof(Object));
+		  objects[elements]->name = "camera";
+		  objects[elements]->kind = 2;
 		  type = 0;
       } else if (strcmp(value, "sphere") == 0) {
+		  objects[elements] = malloc(sizeof(Object));
+		  objects[elements]->name = "sphere";
+		  objects[elements]->kind = 1;
 		  type = 1;
       } else if (strcmp(value, "plane") == 0) {
+		  objects[elements] = malloc(sizeof(Object));
+		  objects[elements]->name = "plane";
+		  objects[elements]->kind = 0;
 		  type =2;
       } else {
 	fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
@@ -323,12 +315,12 @@ Object** read_scene(char* filename , Object** objects) {
 	      (strcmp(key, "height") == 0) ||
 	      (strcmp(key, "radius") == 0)) {
 	    double value = next_number(json);
-		valuesetter(type, key,value, objects);
+		valuesetter(type, key,value, objects,elements);
 	  } else if ((strcmp(key, "color") == 0) ||
 		     (strcmp(key, "position") == 0) ||
 		     (strcmp(key, "normal") == 0)) {
 	    double* value = next_vector(json);
-		vectorsetter(type, key,value,objects);
+		vectorsetter(type, key,value,objects,elements);
 	  } else {
 	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",
 		    key, line);
@@ -344,6 +336,7 @@ Object** read_scene(char* filename , Object** objects) {
       c = next_c(json);
       if (c == ',') {
 	// noop
+	elements+= 1;
 	skip_ws(json);
       } else if (c == ']') {  
 	fclose(json);
@@ -359,25 +352,28 @@ Object** read_scene(char* filename , Object** objects) {
 int main(int c, char** argv) {
   Object** objects;
   objects = malloc(sizeof(Object*)*2);
-  objects[0] = malloc(sizeof(Object));
-  objects[1] = malloc(sizeof(Object));
-  objects[2] = malloc(sizeof(Object));
   read_scene(argv[1], objects);
-  objects[0]->kind = 0;
-  objects[1]->kind = 0;
-  objects[2]->kind = 0;
 
   
   double cx = 0;
   double cy = 0;
-  double h = objects[0]->camera.height;
-  double w = objects[0]->camera.width;
+  
+  int find = 0;
+  while(strcmp(objects[find]->name,"camera") != 0){
+	  find +=1;
+  }
 
+  
+  double h= objects[find]->camera.height;
+  double w = objects[find]->camera.width;
   int M = 20;
   int N = 20;
-
   double pixheight = h / M;
   double pixwidth = w / N;
+  find =0;
+  while(objects[find]->kind != NULL ){
+	  find +=1;
+  }
   for (int y = 0; y < M; y += 1) {
     for (int x = 0; x < N; x += 1) {
       double Ro[3] = {0, 0, 0};
@@ -390,24 +386,36 @@ int main(int c, char** argv) {
       normalize(Rd);
 
       double best_t = INFINITY;
-      for (int i=0; objects[i] != 0; i += 1) {
-	double t = 0;
-	switch(objects[2]->kind) {
-	case 0:
-	  t = plane_intersection(Ro, Rd,
-				    objects[2]->plane.center,
-				    objects[2]->plane.normal);
-	  break;
-	default:
-	  // Horrible error
-	  exit(1);
-	}
-	if (t > 0 && t < best_t) best_t = t;
+      for (int i=0; i<=find; i += 1) {
+		double t = 0;
+		switch(objects[i]->kind) {	
+		case 0:
+			t = plane_intersection(Ro, Rd,
+				    objects[i]->plane.center,
+				    objects[i]->plane.normal);
+					//printf("%lf",t);
+			break;
+		case 1:
+			t = sphere_intersection(Ro, Rd,
+					objects[i]->sphere.center,
+					objects[i]->sphere.radius);
+					//printf("%lf",t);
+			break;
+		case 2:
+			break;
+		default:
+			// Horrible error
+			exit(1);
+		}
+		if (t > 0 && t < best_t) {
+			best_t = t;
+		}
       }
+	  //printf("bset: %lf", best_t);
       if (best_t > 0 && best_t != INFINITY) {
-	printf("#");
+		printf("#");
       } else {
-	printf(".");
+		printf(".");
       }
       
     }

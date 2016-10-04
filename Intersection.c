@@ -106,19 +106,19 @@ int main() {
   Object** objects;
   objects = malloc(sizeof(Object*)*2);
   objects[1] = malloc(sizeof(Object));
-  objects[1]->kind = 0;
+  objects[1]->kind = 1;
   objects[1]->sphere.radius = 2;
   objects[1]->sphere.center[0] = 0;
   objects[1]->sphere.center[1] = 2;
   objects[1]->sphere.center[2] = 5;
-  objects[2] = malloc(sizeof(Object));
-  objects[2]->kind = 0;
-  objects[2]->plane.center[0] = 0;
-  objects[2]->plane.center[1] = 2;
-  objects[2]->plane.center[2] = 5;
-  objects[2]->plane.normal[0] = 0;
-  objects[2]->plane.normal[1] = 2;
-  objects[2]->plane.normal[2] = 5;
+  objects[0] = malloc(sizeof(Object));
+  objects[0]->kind = 0;
+  objects[0]->plane.center[0] = 0;
+  objects[0]->plane.center[1] = -1;
+  objects[0]->plane.center[2] = 0;
+  objects[0]->plane.normal[0] = 0;
+  objects[0]->plane.normal[1] = 1;
+  objects[0]->plane.normal[2] = 0;
   
   
   double cx = 0;
@@ -143,19 +143,25 @@ int main() {
       normalize(Rd);
 
       double best_t = INFINITY;
-      for (int i=0; objects[i] != 0; i += 1) {
+      for (int i=0; objects[i] != 0; i ++) {
 	double t = 0;
-	switch(objects[1]->kind) {
-	case 0:
+	switch(objects[i]->name) {
+	case "plane":
 	  t = plane_intersection(Ro, Rd,
-				    objects[1]->plane.center,
-				    objects[1]->plane.normal);
-	  break;
+				    objects[i]->plane.center,
+				    objects[i]->plane.normal);
+		break;
+	case "sphere":
+	  t = sphere_intersection(Ro, Rd,
+				    objects[i]->sphere.center,
+				    objects[i]->sphere.radius);
+		break;
 	default:
 	  // Horrible error
 	  exit(1);
 	}
 	if (t > 0 && t < best_t) best_t = t;
+	//printf("%lf\n",best_t);
       }
       if (best_t > 0 && best_t != INFINITY) {
 	printf("#");
