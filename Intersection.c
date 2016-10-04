@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+
 // Plymorphism in C
 
 typedef struct {
@@ -17,7 +18,7 @@ typedef struct {
       double radius;
     } sphere;
     struct {
-	  double center[3];
+      double center[3];
       double normal[3];
     } plane;
   };
@@ -37,18 +38,31 @@ static inline void normalize(double* v) {
 }
 double plane_intersection(double* Ro, double* Rd,
 			     double* C, double* n) {
-  double d = (n[0]* C[0])+(n[1]* C[1])+(n[2]* C[2]);
-  double a = (n[0]* Rd[0]) +(n[1]* Rd[1]) +(n[2]* Rd[2]);
-  double b = (n[0]* Ro[0]) +(n[1]* Ro[1]) +(n[2]* Ro[2]) + d;
-  double c  = -b/a;
-  double e  = (Ro[0] + Rd[0] *(c * Ro[1]) + Rd[1] *(c * Ro[2]) + Rd[2]);
+  double a = (n[0]* Rd[0])+(n[1]* Rd[1])+(n[2]* Rd[2]);
+
+  if(fabs(a) < .0001) {
+    return -1;
+  }
   
-  return e;
+  double b[3];
+  
+  for (int i=0; i<=2;i++){
+	  b[i] = C[i]-Ro[i];
+  }
+
+  double d = (b[0]* n[0])+(b[1]* n[1])+(b[2]* n[2]) ;
+
+  double t = d/a;
+
+  if (t < 0) {
+    return -1;
+  }
+
+  return t;
 }
 
 double sphere_intersection(double* Ro, double* Rd,
 			     double* C, double r) {
-  printf("%i",r);
   double a = (sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]));
   double b = (2 * (Rd[0] * (Ro[0] - C[0]) + Rd[1] * (Ro[1] - C[1]) + Rd[2] * (Ro[2] - C[2])));
   double c = sqr(Ro[0]- C[0]) + sqr(Ro[1]- C[1]) +sqr(Ro[2]- C[2]) - sqr(r);
@@ -91,14 +105,21 @@ int main() {
 
   Object** objects;
   objects = malloc(sizeof(Object*)*2);
-  objects[0] = malloc(sizeof(Object));
-  objects[0]->kind = 0;
-  objects[0]->cylinder.radius = 2;
-  // object[0]->teapot.handle_length = 2;
-  objects[0]->cylinder.center[0] = 0;
-  objects[0]->cylinder.center[1] = 2;
-  objects[0]->cylinder.center[2] = 5;
-  objects[1] = NULL;
+  objects[1] = malloc(sizeof(Object));
+  objects[1]->kind = 0;
+  objects[1]->sphere.radius = 2;
+  objects[1]->sphere.center[0] = 0;
+  objects[1]->sphere.center[1] = 2;
+  objects[1]->sphere.center[2] = 5;
+  objects[2] = malloc(sizeof(Object));
+  objects[2]->kind = 0;
+  objects[2]->plane.center[0] = 0;
+  objects[2]->plane.center[1] = 2;
+  objects[2]->plane.center[2] = 5;
+  objects[2]->plane.normal[0] = 0;
+  objects[2]->plane.normal[1] = 2;
+  objects[2]->plane.normal[2] = 5;
+  
   
   double cx = 0;
   double cy = 0;
@@ -124,12 +145,11 @@ int main() {
       double best_t = INFINITY;
       for (int i=0; objects[i] != 0; i += 1) {
 	double t = 0;
-
-	switch(objects[i]->kind) {
+	switch(objects[1]->kind) {
 	case 0:
-	  t = sphere_intersection(Ro, Rd,
-				    objects[i]->cylinder.center,
-				    objects[i]->cylinder.radius);
+	  t = plane_intersection(Ro, Rd,
+				    objects[1]->plane.center,
+				    objects[1]->plane.normal);
 	  break;
 	default:
 	  // Horrible error
