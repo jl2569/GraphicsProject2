@@ -200,7 +200,14 @@ double* next_vector(FILE* json) {
 
 Object** valuesetter(int type,char* key ,double value,Object** objects ){
 	if (type == 0){
-		return objects;
+		if((strcmp(key,"width")==0)){
+			objects[0]->camera.width = value;
+			return objects;
+		}else{
+			objects[0]->camera.height = value;
+			return objects;
+		}
+		
 	}else {
 		if ((strcmp(key, "radius") == 0)){
 			objects[1]->sphere.radius = value;
@@ -358,13 +365,13 @@ int main(int c, char** argv) {
   read_scene(argv[1], objects);
   objects[0]->kind = 0;
   objects[1]->kind = 0;
-  objects[2]->kind = 2;
+  objects[2]->kind = 0;
 
   
   double cx = 0;
   double cy = 0;
-  double h = 0.7;
-  double w = 0.7;
+  double h = objects[0]->camera.height;
+  double w = objects[0]->camera.width;
 
   int M = 20;
   int N = 20;
@@ -385,11 +392,11 @@ int main(int c, char** argv) {
       double best_t = INFINITY;
       for (int i=0; objects[i] != 0; i += 1) {
 	double t = 0;
-	switch(objects[1]->kind) {
+	switch(objects[2]->kind) {
 	case 0:
-	  t = sphere_intersection(Ro, Rd,
-				    objects[1]->sphere.center,
-				    objects[1]->sphere.radius);
+	  t = plane_intersection(Ro, Rd,
+				    objects[2]->plane.center,
+				    objects[2]->plane.normal);
 	  break;
 	default:
 	  // Horrible error
