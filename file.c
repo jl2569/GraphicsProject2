@@ -1,6 +1,92 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
+// Plymorphism in C
+
+typedef struct {
+  int kind; // 0 = cylinder, 1 = sphere, 2 = plane
+  double color[3];
+  union {
+    struct {
+      double center[3];
+      double radius;
+    } cylinder;
+    struct {	
+      double center[3];
+      double radius;
+    } sphere;
+    struct {
+	  double center[3];
+      double normal[3];
+    } plane;
+  };
+} Object;
+
+
+static inline double sqr(double v) {
+  return v*v;
+}
+
+
+static inline void normalize(double* v) {
+  double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
+  v[0] /= len;
+  v[1] /= len;
+  v[2] /= len;
+}
+double plane_intersection(double* Ro, double* Rd,
+			     double* C, double* n) {
+  double d = (n[0]* C[0])+(n[1]* C[1])+(n[2]* C[2]);
+  double a = (n[0]* Rd[0]) +(n[1]* Rd[1]) +(n[2]* Rd[2]);
+  double b = (n[0]* Ro[0]) +(n[1]* Ro[1]) +(n[2]* Ro[2]) + d;
+  double c  = -b/a;
+  double e  = (Ro[0] + Rd[0] *(c * Ro[1]) + Rd[1] *(c * Ro[2]) + Rd[2]);
+  
+  return e;
+}
+
+double sphere_intersection(double* Ro, double* Rd,
+			     double* C, double r) {
+  double a = (sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]));
+  double b = (2 * (Rd[0] * (Ro[0] - C[0]) + Rd[1] * (Ro[1] - C[1]) + Rd[2] * (Ro[2] - C[2])));
+  double c = sqr(Ro[0]- C[0]) + sqr(Ro[1]- C[1]) +sqr(Ro[2]- C[2]) - sqr(r);
+
+  double det = sqr(b) - 4 * a * c;
+  if (det < 0) return -1;
+
+  det = sqrt(det);
+  
+  double t0 = (-b - det) / (2*a);
+  if (t0 > 0) return t0;
+
+  double t1 = (-b + det) / (2*a);
+  if (t1 > 0) return t1;
+
+  return -1;
+}
+
+double cylinder_intersection(double* Ro, double* Rd,
+			     double* C, double r) {
+
+  double a = (sqr(Rd[0]) + sqr(Rd[2]));
+  double b = (2 * (Ro[0] * Rd[0] - Rd[0] * C[0] + Ro[2] * Rd[2] - Rd[2] * C[2]));
+  double c = sqr(Ro[0]) - 2*Ro[0]*C[0] + sqr(C[0]) + sqr(Ro[2]) - 2*Ro[2]*C[2] + sqr(C[2]) - sqr(r);
+
+  double det = sqr(b) - 4 * a * c;
+  if (det < 0) return -1;
+
+  det = sqrt(det);
+  
+  double t0 = (-b - det) / (2*a);
+  if (t0 > 0) return t0;
+
+  double t1 = (-b + det) / (2*a);
+  if (t1 > 0) return t1;
+
+  return -1;
+}
 
 int line = 1;
 
@@ -99,11 +185,56 @@ double* next_vector(FILE* json) {
   return v;
 }
 
+void valuesetter(int type,char* key ,double value, Object** objects ){
+	if (type == 0){
+	}else {
+		if ((strcmp(key, "radius") == 0)){
+			objects[1]->sphere.radius = value;
+		}
+	}
+}
+void vectorsetter(int type,char* key ,double* value, Object** objects ){
+	if (type == 1){
+		if ((strcmp(key, "color") == 0)){
+			for (int i=0;i<=2;i++){
+			   // objects[1]->sphere.color[i] = value[i];
+			}
+		}else if ((strcmp(key, "position") == 0)){
+			for (int i=0;i<=2;i++){
+			    objects[1]->sphere.center[i] = value[i];
+			}
+		} 
+	}else {
+		if ((strcmp(key, "color") == 0)){			
+		for (int i=0;i<=2;i++){
+			    //objects[2]->plane.color[i] = value[i];
+				
+			}
+		}else if ((strcmp(key, "position") == 0)){
+			for (int i=0;i<=2;i++){
+				printf("fuck me");
+			    //objects[2]->plane.center[i] = value[i];
+			}
+		}else{
+			for (int i=0;i<=2;i++){
+			    //objects[2]->plane.normal[i] = value[i];
+			}
+		}
+		
+	}
+}
 
-void read_scene(char* filename) {
+void read_scene(char* filename ) {
+  Object** objects;
+  objects = malloc(sizeof(Object*)*2);
+  objects[0] = malloc(sizeof(Object));
+  int type = 0;
+ 
+  objects[0]->kind = 0;
+
   int c;
-  FILE* json = fopen(filename, "r");
-
+  FILE* json = fopen(filename, "r"); 
+  
   if (json == NULL) {
     fprintf(stderr, "Error: Could not open file \"%s\"\n", filename);
     exit(1);
@@ -123,7 +254,7 @@ void read_scene(char* filename) {
     if (c == ']') {
       fprintf(stderr, "Error: This is the worst scene file EVER.\n");
       fclose(json);
-      return;
+      return ;
     }
     if (c == '{') {
       skip_ws(json);
@@ -144,8 +275,11 @@ void read_scene(char* filename) {
       char* value = next_string(json);
 
       if (strcmp(value, "camera") == 0) {
+		  type = 0;
       } else if (strcmp(value, "sphere") == 0) {
+		  type = 1;
       } else if (strcmp(value, "plane") == 0) {
+		  type =2;
       } else {
 	fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
 	exit(1);
@@ -170,10 +304,12 @@ void read_scene(char* filename) {
 	      (strcmp(key, "height") == 0) ||
 	      (strcmp(key, "radius") == 0)) {
 	    double value = next_number(json);
+		valuesetter(type, key,value, objects);
 	  } else if ((strcmp(key, "color") == 0) ||
 		     (strcmp(key, "position") == 0) ||
 		     (strcmp(key, "normal") == 0)) {
 	    double* value = next_vector(json);
+		vectorsetter(type, key,value,objects);
 	  } else {
 	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",
 		    key, line);
@@ -191,17 +327,19 @@ void read_scene(char* filename) {
 	// noop
 	skip_ws(json);
       } else if (c == ']') {
+		  return;
 	fclose(json);
-	return;
       } else {
 	fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
 	exit(1);
       }
     }
   }
+
 }
 
 int main(int c, char** argv) {
   read_scene(argv[1]);
+  
   return 0;
 }
