@@ -26,31 +26,6 @@ typedef struct {
   };
 } Object;
 
-typedef struct Image {
-  double width;
-  double height;
-  char* color;
-}Image;
-
-void shade_pixel(double *color, int row, int col,Image *image) {
-    image->color[(int)(row * image->width*4 + col*4)] = (char)color[0];
-    image->color[(int)(row * image->width*4 + col*4+1)] = (char)color[1];
-    image->color[(int)(row * image->width*4 + col*4+2)]= (char)color[2];
-    image->color[(int)(row * image->width*4 + col*4+3)]= 255;
-}
-void convert(Image *image, FILE* fp) {
-
-  size_t num;
-  int size = image->width*image->height*4;
-    for (int i=0; i<size; i++) {
-      char c = image->color[i];
-      if (i%4 != 0) {
-        fwrite(&c, 1, 1, fp);
-      }
-    }
-  
-  fclose(fp);
-}
 static inline double sqr(double v) {
   return v*v;
 }
@@ -411,7 +386,7 @@ int main(int argc, char *argv[] ) {
   read_scene(argv[3], objects);
   char *header = (char *)malloc(100);
   // sets the header of the image
-  fputs("P6 ",fp);
+  fputs("P3 ",fp);
   strcpy(header,argv[1]);
   fputs(header,fp);
   fputs(" ",fp);
@@ -431,10 +406,6 @@ int main(int argc, char *argv[] ) {
   double w = objects[find]->camera.width;
   int M = atoi(argv[2]);
   int N = atoi(argv[1]);
-  Image *image = (Image *)malloc(sizeof(Image));
-  image->height = N;
-  image->width = M;
-  image->color = (char*)malloc(sizeof(char) * image->height * image->width * 4);
   double pixheight = h / M;
   double pixwidth = w / N;
   find =0;
@@ -480,14 +451,26 @@ int main(int argc, char *argv[] ) {
       }
 	  // if there is a value in the best_t then it calls for the color to be implemented.
       if (best_t > 0 && best_t != INFINITY) {
-		shade_pixel(objects[flash]->color,y, x,image);
+		double temp;
+		char word[1000];
+		temp= objects[flash]->color[0] *255;
+		printf("%f", temp);
+		sprintf(word,"%lf ",temp);
+		printf("%f", temp);
+		fputs(word,fp);
+		temp= objects[flash]->color[1] *255;
+		sprintf(word," %lf ",temp);
+		fputs(word,fp);
+		temp= objects[flash]->color[2] *255;
+		sprintf(word,"%lf\n",temp);
+		fputs(word,fp);
       } else {
-		
+		fputs("0 0 0\n",fp);
       }
       
     }
     //printf("\n");
   }
-  convert(image, fp);
+  close(fp);
   return 0;
 }
