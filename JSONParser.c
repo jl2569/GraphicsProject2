@@ -159,7 +159,10 @@ char* next_string(FILE* json) {
 double next_number(FILE* json) {
   double value;
   fscanf(json, "%lf", &value);
-  // Error check this..
+  if (value == EOF) {
+     fprintf(stderr, "Error: Expected a number but not found.\n");
+     exit(1);
+    }
   return value;
 }
 
@@ -190,7 +193,8 @@ Object** valuesetter(int type,char* key ,double value,Object** objects,int eleme
 			objects[elements]->camera.height = value;
 			return objects;
 		}else{
-			fprintf(stderr,"Error:camera does not support %s",key);
+			fprintf(stderr,"Error:camera does not support %s\n",key);
+			exit(1);
 		}
 		
 	}else if (type == 1) {
@@ -198,10 +202,12 @@ Object** valuesetter(int type,char* key ,double value,Object** objects,int eleme
 			objects[elements]->sphere.radius = value;
 			return objects;
 		}else{
-			fprintf(stderr,"Error:sphere does not support %s",key);
+			fprintf(stderr,"Error:sphere does not support %s\n",key);
+			exit(1);
 		}
 	}else{
-		fprintf(stderr,"Error: Key %s is not supported",type);
+		fprintf(stderr,"Error: Key %s is not supported\n",type);
+		exit(1);
 	}
 }
 // sets the vector value elements to their apporiate type and object
@@ -209,7 +215,12 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 	if (type == 1){
 		if ((strcmp(key, "color") == 0)){
 			for (int i=0;i<=2;i++){
+				if (objects[elements]->color[i] >1 || objects[elements]->color[i]< 0){
+					fprintf(stderr,"Error:value in color for sphere is not inbetween 0 and 1\n");
+					exit(1);
+				}else{
 			   objects[elements]->color[i] = value[i];
+				}
 			}
 			return objects;
 		}else if ((strcmp(key, "position") == 0)){
@@ -218,12 +229,18 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 			}
 			return objects;
 		}else{
-			fprintf(stderr,"Error:sphere does not support %s",key);
+			fprintf(stderr,"Error:sphere does not support %s\n",key);
+			exit(1);
 		}
 	}else if (type == 2) {
 		if ((strcmp(key, "color") == 0)){			
 		for (int i=0;i<=2;i++){
+				if (objects[elements]->color[i] >1 || objects[elements]->color[i]< 0){
+					fprintf(stderr,"Error:value in color for plane is not inbetween 0 and 1\n");
+					exit(1);
+				}else{
 			    objects[elements]->color[i] = value[i];
+				}
 			}
 			return objects;
 		}else if ((strcmp(key, "position") == 0)){
@@ -237,11 +254,13 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 			}
 			return objects;
 		}else{
-			fprintf(stderr,"Error:plane does not support %s",key);
+			fprintf(stderr,"Error:plane does not support %s\n",key);
+			exit(1);
 		}
 		
 	}else{
-		fprintf(stderr,"Error: %s is not supported",type);
+		fprintf(stderr,"Error: %s is not supported\n",type);
+		exit(1);
 	}
 }
 
@@ -366,17 +385,17 @@ Object** read_scene(char* filename , Object** objects) {
 
 int main(int argc, char *argv[] ) {
   if(argc <= 4){
-	fprintf(stderr, "Error: # of Arguments do not match number required.");
+	fprintf(stderr, "Error: # of Arguments do not match number required.\n");
 	exit(1);
   }
   FILE *fp;
   // checks whether or not the height and the width of the image are apporiate
   if(atoi(argv[1])<1){
-	fprintf(stderr, "Error: cannot generate a image with a width less than 1");
+	fprintf(stderr, "Error: cannot generate a image with a width less than 1\n");
 	exit(1);  
   }
     if(atoi(argv[2])<1){
-	fprintf(stderr, "Error: cannot generate a image with a height less than 1");
+	fprintf(stderr, "Error: cannot generate a image with a height less than 1\n");
 	exit(1);  
   }
 
