@@ -454,9 +454,7 @@ int main(int argc, char *argv[] ) {
 		double temp;
 		char word[1000];
 		temp= objects[flash]->color[0] *255;
-		printf("%f", temp);
 		sprintf(word,"%lf ",temp);
-		printf("%f", temp);
 		fputs(word,fp);
 		temp= objects[flash]->color[1] *255;
 		sprintf(word," %lf ",temp);
