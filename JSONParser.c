@@ -26,7 +26,31 @@ typedef struct {
   };
 } Object;
 
+typedef struct Image {
+  double width;
+  double height;
+  char* color;
+}Image;
 
+void shade_pixel(double *color, int row, int col,Image *image) {
+    image->color[(int)(row * image->width*4 + col*4)] = (char)color[0];
+    image->color[(int)(row * image->width*4 + col*4+1)] = (char)color[1];
+    image->color[(int)(row * image->width*4 + col*4+2)]= (char)color[2];
+    image->color[(int)(row * image->width*4 + col*4+3)]= 255;
+}
+void convert(Image *image, FILE* fp) {
+
+  size_t num;
+  int size = image->width*image->height*4;
+    for (int i=0; i<size; i++) {
+      char c = image->color[i];
+      if (i%4 != 0) {
+        fwrite(&c, 1, 1, fp);
+      }
+    }
+  
+  fclose(fp);
+}
 static inline double sqr(double v) {
   return v*v;
 }
@@ -38,6 +62,8 @@ static inline void normalize(double* v) {
   v[1] /= len;
   v[2] /= len;
 }
+
+// function that looks for the plane on the image by doing plane intersection and determines if the plane is in the spot of the image
 double plane_intersection(double* Ro, double* Rd,
 			     double* C, double* n) {
   normalize(n);
@@ -62,7 +88,7 @@ double plane_intersection(double* Ro, double* Rd,
 
   return t;
 }
-
+// function that looks for the sphere on the image by doing sphere intersection and determines if the sphere is in the spot of the image
 double sphere_intersection(double* Ro, double* Rd,
 			     double* C, double r) {
   double a = (sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]));
@@ -179,24 +205,31 @@ double* next_vector(FILE* json) {
   expect_c(json, ']');
   return v;
 }
-
+// sets the single value elements to their apporiate type and object
 Object** valuesetter(int type,char* key ,double value,Object** objects,int elements ){
 	if (type == 0){
 		if((strcmp(key,"width")==0)){
 			objects[elements]->camera.width = value;
 			return objects;
-		}else{
+		}else if ((strcmp(key,"height")==0)){
 			objects[elements]->camera.height = value;
 			return objects;
+		}else{
+			fprintf(stderr,"Error:camera does not support %s",key);
 		}
 		
-	}else {
+	}else if (type == 1) {
 		if ((strcmp(key, "radius") == 0)){
 			objects[elements]->sphere.radius = value;
 			return objects;
+		}else{
+			fprintf(stderr,"Error:sphere does not support %s",key);
 		}
+	}else{
+		fprintf(stderr,"Error: Key %s is not supported",type);
 	}
 }
+// sets the vector value elements to their apporiate type and object
 Object** vectorsetter(int type,char* key ,double* value,Object** objects,int elements ){
 	if (type == 1){
 		if ((strcmp(key, "color") == 0)){
@@ -209,8 +242,10 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 			    objects[elements]->sphere.center[i] = value[i];
 			}
 			return objects;
-		} 
-	}else {
+		}else{
+			fprintf(stderr,"Error:sphere does not support %s",key);
+		}
+	}else if (type == 2) {
 		if ((strcmp(key, "color") == 0)){			
 		for (int i=0;i<=2;i++){
 			    objects[elements]->color[i] = value[i];
@@ -221,16 +256,21 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 			    objects[elements]->plane.center[i] = value[i];
 			}
 			return objects;
-		}else{
+		}else if ((strcmp(key, "normal") == 0)){
 			for (int i=0;i<=2;i++){
 			    objects[elements]->plane.normal[i] = value[i];
 			}
 			return objects;
+		}else{
+			fprintf(stderr,"Error:plane does not support %s",key);
 		}
 		
+	}else{
+		fprintf(stderr,"Error: %s is not supported",type);
 	}
 }
 
+// reads the JSON file and figures out the all the types and sets them in to the objects
 Object** read_scene(char* filename , Object** objects) {
   int c;
   int elements = 0;
@@ -349,11 +389,35 @@ Object** read_scene(char* filename , Object** objects) {
   }
 }
 
-int main(int c, char** argv) {
+int main(int argc, char *argv[] ) {
+  if(argc <= 4){
+	fprintf(stderr, "Error: # of Arguments do not match number required.");
+	exit(1);
+  }
+  FILE *fp;
+  // checks whether or not the height and the width of the image are apporiate
+  if(atoi(argv[1])<1){
+	fprintf(stderr, "Error: cannot generate a image with a width less than 1");
+	exit(1);  
+  }
+    if(atoi(argv[2])<1){
+	fprintf(stderr, "Error: cannot generate a image with a height less than 1");
+	exit(1);  
+  }
+
+  fp = fopen(argv[4],"w+");
   Object** objects;
   objects = malloc(sizeof(Object*)*2);
-  read_scene(argv[1], objects);
-
+  read_scene(argv[3], objects);
+  char *header = (char *)malloc(100);
+  // sets the header of the image
+  fputs("P6 ",fp);
+  strcpy(header,argv[1]);
+  fputs(header,fp);
+  fputs(" ",fp);
+  strcpy(header,argv[2]);
+  fputs(header,fp);
+  fputs(" 255\n",fp);
   
   double cx = 0;
   double cy = 0;
@@ -362,12 +426,15 @@ int main(int c, char** argv) {
   while(strcmp(objects[find]->name,"camera") != 0){
 	  find +=1;
   }
-
-  
+  //Sets the view of the camera
   double h= objects[find]->camera.height;
   double w = objects[find]->camera.width;
-  int M = 20;
-  int N = 20;
+  int M = atoi(argv[2]);
+  int N = atoi(argv[1]);
+  Image *image = (Image *)malloc(sizeof(Image));
+  image->height = N;
+  image->width = M;
+  image->color = (char*)malloc(sizeof(char) * image->height * image->width * 4);
   double pixheight = h / M;
   double pixwidth = w / N;
   find =0;
@@ -386,6 +453,7 @@ int main(int c, char** argv) {
       normalize(Rd);
 
       double best_t = INFINITY;
+	  int flash = 2;
       for (int i=0; i<=find; i += 1) {
 		double t = 0;
 		switch(objects[i]->kind) {	
@@ -393,13 +461,11 @@ int main(int c, char** argv) {
 			t = plane_intersection(Ro, Rd,
 				    objects[i]->plane.center,
 				    objects[i]->plane.normal);
-					//printf("%lf",t);
 			break;
 		case 1:
 			t = sphere_intersection(Ro, Rd,
 					objects[i]->sphere.center,
 					objects[i]->sphere.radius);
-					//printf("%lf",t);
 			break;
 		case 2:
 			break;
@@ -409,18 +475,19 @@ int main(int c, char** argv) {
 		}
 		if (t > 0 && t < best_t) {
 			best_t = t;
+			flash = i;
 		}
       }
-	  //printf("bset: %lf", best_t);
+	  // if there is a value in the best_t then it calls for the color to be implemented.
       if (best_t > 0 && best_t != INFINITY) {
-		printf("#");
+		shade_pixel(objects[flash]->color,y, x,image);
       } else {
-		printf(".");
+		
       }
       
     }
-    printf("\n");
+    //printf("\n");
   }
-  
+  convert(image, fp);
   return 0;
 }
