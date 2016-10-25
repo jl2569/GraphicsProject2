@@ -159,10 +159,10 @@ char* next_string(FILE* json) {
 double next_number(FILE* json) {
   double value;
   fscanf(json, "%lf", &value);
-  if (value == EOF) {
-     fprintf(stderr, "Error: Expected a number but not found.\n");
-     exit(1);
-    }
+  //if (value == EOF) {
+  //   fprintf(stderr, "Error: Expected a number but not found.\n");
+  //   exit(1);
+   // }
   return value;
 }
 
@@ -215,7 +215,7 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 	if (type == 1){
 		if ((strcmp(key, "color") == 0)){
 			for (int i=0;i<=2;i++){
-				if (objects[elements]->color[i] >1 || objects[elements]->color[i]< 0){
+				if (value[i] >1 || value[i] < 0){
 					fprintf(stderr,"Error:value in color for sphere is not inbetween 0 and 1\n");
 					exit(1);
 				}else{
@@ -235,7 +235,7 @@ Object** vectorsetter(int type,char* key ,double* value,Object** objects,int ele
 	}else if (type == 2) {
 		if ((strcmp(key, "color") == 0)){			
 		for (int i=0;i<=2;i++){
-				if (objects[elements]->color[i] >1 || objects[elements]->color[i]< 0){
+				if (value[i] >1 || value[i] < 0){
 					fprintf(stderr,"Error:value in color for plane is not inbetween 0 and 1\n");
 					exit(1);
 				}else{
